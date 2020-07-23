@@ -1,0 +1,106 @@
+<?php
+    $pc = $this->pusheeConfig;
+?>
+<!-- The core Firebase JS SDK is always required and must be listed first -->
+<!--<script src="/bundles/homepushee/firebase/7.16.1/firebase-app.js"></script>
+<script src="/bundles/homepushee/firebase/7.16.1/firebase-messaging.js"></script>-->
+<script src="https://www.gstatic.com/firebasejs/7.16.1/firebase-app.js"></script>
+<script src="https://www.gstatic.com/firebasejs/7.16.1/firebase-messaging.js"></script>
+
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        try {
+            // Your web app's Firebase configuration
+            let firebaseConfig = {
+                apiKey: "<?=$pc['apiKey']?>",
+                authDomain: "<?=$pc['authDomain']?>",
+                databaseURL: "<?=$pc['databaseURL']?>",
+                projectId: "<?=$pc['projectId']?>",
+                storageBucket: "<?=$pc['storageBucket']?>",
+                messagingSenderId: "<?=$pc['messagingSenderId']?>",
+                appId: "<?=$pc['appId']?>",
+                measurementId: "<?=$pc['measurementId']?>"
+            };
+            // Initialize Firebase
+            firebase.initializeApp(firebaseConfig);
+            const messaging = firebase.messaging();
+
+            // Init service worker
+            if('serviceWorker' in navigator){
+                navigator.serviceWorker.register('/bundles/homepushee/<?=$pc['projectId']?>-sw.js').then(
+                    registration => {
+                        messaging.useServiceWorker(registration);
+                    }
+                ).catch(err => console.log('Service Worker Error', err))
+            }else{
+                console.log('Service Worker not supported');
+            }
+
+            // Get Instance ID token. Initially this makes a network call, once retrieved
+            // subsequent calls to getToken will return from cache.
+            messaging.getToken().then((currentToken) => {
+                if (currentToken) {
+                    console.log('token',currentToken);
+                    token = currentToken;
+                    sendTokenToServer(currentToken);
+                    isSubscribed = true;
+                    //updateUIForPushEnabled(currentToken);
+
+                } else {
+                    // Show permission request.
+                    console.log('No Instance ID token available. Request permission to generate one.');
+                    // Show permission UI.
+                    //updateUIForPushPermissionRequired();
+                    //setTokenSentToServer(false);
+                    isSubscribed = false;
+                }
+            }).catch((err) => {
+                console.log('An error occurred while retrieving token. ', err);
+                //showToken('Error retrieving Instance ID token. ', err);
+                //setTokenSentToServer(false);
+            });
+
+            // Callback fired if Instance ID token is updated.
+            messaging.onTokenRefresh(() => {
+                messaging.getToken().then((refreshedToken) => {
+                    console.log('Token refreshed.',refreshedToken);
+                    // Indicate that the new Instance ID token has not yet been sent to the
+                    // app server.
+                    //setTokenSentToServer(false);
+                    isSubscribed = false;
+                    // Send Instance ID token to app server.
+                    sendTokenToServer(refreshedToken);
+                    // ...
+                }).catch((err) => {
+                    console.log('Unable to retrieve refreshed token ', err);
+                    //showToken('Unable to retrieve refreshed token ', err);
+                });
+            });
+
+            // Handle incoming messages. Called when:
+            // - a message is received while the app has focus
+            // - the user clicks on an app notification created by a service worker
+            //   `messaging.setBackgroundMessageHandler` handler.
+            messaging.onMessage((payload) => {
+                console.log('Message received. ', payload);
+                // Show message in snackbar
+                // Get the snackbar DIV
+                let snackbar = document.getElementById("snackbar");
+
+                // Add message to snackbar
+                snackbar.innerHTML = '<h3>Title</h3><p>Body</p>';
+
+                // Add the "show" class to DIV
+                snackbar.className = "show";
+
+                // After 3 seconds, remove the show class from DIV
+                setTimeout(function(){ snackbar.className = snackbar.className.replace("show", ""); }, 3000);
+
+            });
+        }catch (e) {
+            console.error(e);
+        }
+    })
+</script>
+<!-- The actual snackbar -->
+<div id="snackbar">Some text some message..</div>

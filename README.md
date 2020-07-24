@@ -8,6 +8,7 @@ notifications via FCM.
 ```
 composer require home/pushee-bundle
 ```
+Navigate to `/contao/install` and update your database.
 
 ## Usage
 
@@ -21,6 +22,6 @@ composer require home/pushee-bundle
 
 If someone enables notifications there client_id will be saved in the contao database.
 
-After sending a push notification the result will be processed and client_id's that are no valid used will be removed.
+After sending a push notification the result will be processed and client_id's that are no valid will be removed.
 
 Sending push notifications is not possible when there are no clients registered, or the FCM server key is missing.

@@ -26,24 +26,24 @@
             const messaging = firebase.messaging();
 
             // Init service worker
+            /* not working, fcm still wants to load firebase-messaging-sw.js
             if('serviceWorker' in navigator){
-                navigator.serviceWorker.register('/bundles/homepushee/<?=$pc['projectId']?>-sw.js').then(
+                navigator.serviceWorker.register('<?php // echo $pc['projectId']?>-sw.js').then(
                     registration => {
                         messaging.useServiceWorker(registration);
+                        console.log('service worker registerd');
                     }
                 ).catch(err => console.log('Service Worker Error', err))
             }else{
                 console.log('Service Worker not supported');
-            }
+            }*/
 
             // Get Instance ID token. Initially this makes a network call, once retrieved
             // subsequent calls to getToken will return from cache.
             messaging.getToken().then((currentToken) => {
                 if (currentToken) {
-                    console.log('token',currentToken);
-                    token = currentToken;
+                    //console.log('token',currentToken);
                     sendTokenToServer(currentToken);
-                    isSubscribed = true;
                     //updateUIForPushEnabled(currentToken);
 
                 } else {
@@ -52,7 +52,6 @@
                     // Show permission UI.
                     //updateUIForPushPermissionRequired();
                     //setTokenSentToServer(false);
-                    isSubscribed = false;
                 }
             }).catch((err) => {
                 console.log('An error occurred while retrieving token. ', err);
@@ -67,7 +66,6 @@
                     // Indicate that the new Instance ID token has not yet been sent to the
                     // app server.
                     //setTokenSentToServer(false);
-                    isSubscribed = false;
                     // Send Instance ID token to app server.
                     sendTokenToServer(refreshedToken);
                     // ...
@@ -82,21 +80,39 @@
             // - the user clicks on an app notification created by a service worker
             //   `messaging.setBackgroundMessageHandler` handler.
             messaging.onMessage((payload) => {
-                console.log('Message received. ', payload);
-                // Show message in snackbar
-                // Get the snackbar DIV
-                let snackbar = document.getElementById("snackbar");
+                if(payload.hasOwnProperty('notification')){
+                    // Show message in snackbar
+                    let title = payload.notification.title;
+                    let body = payload.notification.body;
+                    let href = payload.notification.clickAction;
+                    // Get the snackbar DIV
+                    let snackbar = document.getElementById("snackbar");
 
-                // Add message to snackbar
-                snackbar.innerHTML = '<h3>Title</h3><p>Body</p>';
+                    // Add message to snackbar
+                    snackbar.innerHTML = '<a href="' + href + '"><h3>' + title + '</h3><p>' + body + '</p></a>';
 
-                // Add the "show" class to DIV
-                snackbar.className = "show";
+                    // Add the "show" class to DIV
+                    snackbar.className = "show";
 
-                // After 3 seconds, remove the show class from DIV
-                setTimeout(function(){ snackbar.className = snackbar.className.replace("show", ""); }, 3000);
+                    // After 3 seconds, remove the show class from DIV
+                    setTimeout(function(){ snackbar.className = snackbar.className.replace("show", ""); }, 5000);
 
+                }
             });
+
+            // Send token to backend
+            function sendTokenToServer(token){
+                let data = {token:token};
+
+                $.ajax({
+                    type: "POST",
+                    url: `/pushee/addToken`,
+                    data: data,
+                    dataType: "application/json"
+                }).always (function (data) {
+                    //console.log('data',data);
+                });
+            }
         }catch (e) {
             console.error(e);
         }

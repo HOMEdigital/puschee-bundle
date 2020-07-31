@@ -14,6 +14,8 @@ $dca
     ->addField('text', 'appId')
     ->addField('text', 'measurementId')
 
+    ->addField('text', 'serverKey')
+
     ->copyPalette('default', 'mod_pushee')
     ->addPaletteGroup('mod_pushee',[
         'apiKey',
@@ -25,6 +27,8 @@ $dca
         'appId',
         'measurementId'
     ], 'mod_pushee')
+
+    ->addPaletteGroup('mod_pushee_fcm', ['serverKey'], 'mod_pushee')
 
 ;
 

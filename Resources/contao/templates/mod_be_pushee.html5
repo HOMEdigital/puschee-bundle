@@ -1,0 +1,130 @@
+<?php
+    $token = $this->token;
+    $serverKey = $this->serverKey;
+
+    $disableSend = !$token || !$serverKey;
+?>
+<script>
+    $.noConflict();
+    document.addEventListener('DOMContentLoaded', function() {
+        try {
+            const serverKey = "<?=$serverKey?>";
+            let registrationIds = <?=json_encode($token)?>;
+
+            document.getElementById('sendNotification').onclick = sendMessage;
+
+            function sendMessage(){
+                let sendButton = document.getElementById('sendNotification');
+                let title = document.getElementById('title').value;
+                let body = document.getElementById('body').value;
+                let data = {
+                    "notification": {
+                        "title": title,
+                        "body": body,
+                        "click_action": "https://" + window.location.hostname + "/"
+                    },
+                    "registration_ids": registrationIds
+                };
+
+                sendButton.disabled = true;
+
+                (function( $ ) {
+                    $(function() {
+                        $.ajax({
+                            type: "POST",
+                            url: "https://fcm.googleapis.com/fcm/send",
+                            data: JSON.stringify(data),
+                            beforeSend: function (xhr) {
+                                xhr.setRequestHeader('Authorization', `Bearer ${serverKey}`);
+                                xhr.setRequestHeader('Content-Type', 'application/json');
+                            },
+                            dataType: "application/json"
+                        })
+                        .always (function (data) {
+                            sendButton.disabled = false;
+                            showSnackbar(data);
+                        })
+                    });
+                })(jQuery);
+            }
+
+            function showSnackbar(payload){
+                if(payload.hasOwnProperty('responseText')){
+                    // Show message in snackbar
+                    let response = JSON.parse(payload.responseText);
+                    let snackbar = document.getElementById("snackbar");
+                    snackbar.innerHTML = '';
+
+                    if(response.hasOwnProperty('success') && response.hasOwnProperty('failure') && response.hasOwnProperty('results')){
+                        let success = response.success;
+                        let failure = response.failure;
+                        let results = response.results;
+
+                        if(parseInt(failure) > 0){
+                            let failed = [];
+
+                            for(let i = 0; i < results.length; i++){
+                                console.log('results[i]',results[i]);
+                                if(results[i].hasOwnProperty('error') && results[i].error === 'NotRegistered'){
+                                    failed.push(registrationIds[i]);
+                                }
+                            }
+
+                            (function( $ ) {
+                                $(function() {
+                                    $.ajax({
+                                        type: "POST",
+                                        url: `/pushee/removeToken`,
+                                        data: {token:failed},
+                                        dataType: "application/json"
+                                    }).always (function (data) {
+                                        console.log('removeToken data',data);
+                                    });
+                                });
+                            })(jQuery);
+
+                        }
+
+                        snackbar.innerHTML = `<h3>Push Benachrichtigung gesendet</h3><p>Erfolgreich: ${success}</p><p>Fehlgeschlagen: ${failure}</p>`;
+                    }else{
+                        console.log('response',response);
+                    }
+                }else{
+                    console.log('payload',payload);
+                }
+            }
+        }catch (e) {
+            console.error(e);
+        }
+    })
+</script>
+
+<div class="tl_listing_container list_view" id="tl_listing">
+
+    <?php if(!$serverKey):?>
+    <div style="background-color: red; border: black 1px solid; padding: 7px; margin-bottom: 10px;">
+        <h3>Keinen Serverschlüssel angegeben! Bitte im Module eintragen.</h3>
+    </div>
+    <?php endif; ?>
+    <?php if(!$token):?>
+        <div style="background-color: red; border: black 1px solid; padding: 7px; margin-bottom: 10px;">
+            <h3>Keine Clients registriert. Versuchen Sie es später noch einmal.</h3>
+        </div>
+    <?php endif; ?>
+
+    <form>
+        <div>
+            <label for="title">Benachrichtigungs Titel:</label>
+            <input type="text" class="tl_text" id="title">
+        </div>
+        <div>
+            <label for="body">Benachrichtigungs Body:</label>
+            <input type="text" class="tl_text" id="body">
+        </div>
+        <button type="button" id="sendNotification" style="padding: 7px;" <?= $disableSend ? 'disabled' : ''?>>Senden</button>
+    </form>
+
+    <!-- The actual snackbar -->
+    <div id="snackbar" style="padding-top: 17px;"></div>
+</div>
+

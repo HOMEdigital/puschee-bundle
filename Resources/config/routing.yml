@@ -1,1 +1,3 @@
-
+home_pushee_routing:
+  resource: "@HomePusheeBundle/Controller"
+  type: annotation
